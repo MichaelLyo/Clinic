@@ -80,20 +80,27 @@ class PrescriptionAdmin(admin.ModelAdmin):
     ]
 
     def save_formset(self, request, form, formset, change):
-        flag = True
-        for f in formset.forms:
-            obj = f.instance
-            # if not obj.medicine_drug:
-            #     messages.add_message(request, messages.INFO, '存在空药方，请检查药品的选择')
-            #     flag = False
-            # elif obj.sale_amount > obj.medicine_drug.stock_num:
-            #     messages.add_message(request, messages.INFO, obj.medicine_drug.drug_name
-            #                          + '【' + obj.medicine_drug.manufacturer + '】'
-            #                          + '库存不足！请查看该药品的库存。')
-            #     flag = False
-            print(obj.medicine_drug.drug_name)
-        if flag:
-            formset.save()
+        try:
+            flag = True
+            for f in formset.forms:
+                obj = f.instance
+                if not obj.medicine_drug:
+                    messages.add_message(request, messages.ERROR, '存在空药方，请检查药品的选择')
+                    flag = False
+                elif obj.sale_amount > obj.medicine_drug.stock_num:
+                    messages.add_message(request, messages.ERROR, obj.medicine_drug.drug_name
+                                         + '【' + obj.medicine_drug.manufacturer + '】'
+                                         + '库存不足！请查看该药品的库存。')
+                    flag = False
+                print(obj.medicine_drug.drug_name)
+            if flag:
+                formset.save()
+            else:
+                formset.save(commit=False)
+        except:
+            messages.add_message(request, messages.ERROR, '存在空药方，请检查药品的选择')
+
+            formset.save(commit=False)
 
 
 class DrugAdmin(admin.ModelAdmin):
