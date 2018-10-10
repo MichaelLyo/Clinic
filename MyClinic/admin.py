@@ -1,5 +1,5 @@
 from django.contrib import admin
-
+from django.contrib import messages
 # Register your models here.
 
 from django_extensions.admin import ForeignKeyAutocompleteTabularInline
@@ -14,9 +14,9 @@ class MedicationInline(ForeignKeyAutocompleteTabularInline):
     verbose_name_plural = "药方（该处方开出的所有药品）"
     fk_name = "medicine_prescription"
     fields = [ 'id', 'medicine_drug','sale_amount']
-    related_search_fields = {
-        'medicine_drug': ('id','drug_name','mnemonic_code','manufacturer','specification','unit','serial_number','validity_period','property_classification','function_classification'),
-    }
+    # related_search_fields = {
+    #     'medicine_drug': ('id','drug_name','mnemonic_code','manufacturer','specification','unit','serial_number','validity_period','property_classification','function_classification'),
+    # }
     show_change_link = True
     show_full_result_count = True
     readonly_fields = ['id','get_stock_num']
@@ -58,7 +58,7 @@ class PrescriptionAdmin(admin.ModelAdmin):
     ]
     readonly_fields = ['get_id','get_total_retail_cost','get_total_wholesale_cost']
     # 侧边栏过滤框
-    # list_filter = ['patient_name','doctor_name']
+    list_filter = ['create_date','patient_name']
 
     list_display = ['id', 'patient_name', 'patient_gender', 'patient_age','treatment_cost','get_total_retail_cost','get_total_wholesale_cost','create_date','doctor_name']
 
@@ -79,6 +79,22 @@ class PrescriptionAdmin(admin.ModelAdmin):
 
     ]
 
+    def save_formset(self, request, form, formset, change):
+        flag = True
+        for f in formset.forms:
+            obj = f.instance
+            # if not obj.medicine_drug:
+            #     messages.add_message(request, messages.INFO, '存在空药方，请检查药品的选择')
+            #     flag = False
+            # elif obj.sale_amount > obj.medicine_drug.stock_num:
+            #     messages.add_message(request, messages.INFO, obj.medicine_drug.drug_name
+            #                          + '【' + obj.medicine_drug.manufacturer + '】'
+            #                          + '库存不足！请查看该药品的库存。')
+            #     flag = False
+            print(obj.medicine_drug.drug_name)
+        if flag:
+            formset.save()
+
 
 class DrugAdmin(admin.ModelAdmin):
 
@@ -98,11 +114,12 @@ class DrugAdmin(admin.ModelAdmin):
 
 
     fieldsets = [
-        ('药品基本信息',{'fields':['get_id','drug_name','mnemonic_code','manufacturer','specification','unit']}),
+        # ('库存', {'fields': ['stock_num']}),
+        ('药品基本信息',{'fields':['get_id','drug_name','mnemonic_code','manufacturer','stock_num','specification','unit']}),
+        ('价格信息', {'fields': ['purchase_price', 'retail_price', 'wholesale_price']}),
         ('进货信息', {'fields': ['serial_number','validity_period','purchase_quantity','purchase_date']}),
-        ('价格信息', {'fields': ['purchase_price','retail_price','wholesale_price']}),
         ('分类', {'fields': ['property_classification', 'function_classification']}),
-        ('库存', {'fields': ['stock_num']}),
+
     ]
 
     list_display = ['id','drug_name','mnemonic_code','retail_price','wholesale_price','manufacturer','purchase_date','property_classification','function_classification','stock_num','unit']
@@ -125,9 +142,20 @@ class DrugAdmin(admin.ModelAdmin):
             return obj.id
     get_id.short_description = '药品ID'
 
+class MedicationAdmin(admin.ModelAdmin):
+
+    def save_model(self, request, obj, form, change):
+        if not obj.medicine_drug:
+            messages.add_message(request, messages.INFO, '请选择一个药品！')
+        if obj.sale_amount > obj.medicine_drug.stock_num:
+            messages.add_message(request, messages.INFO, '库存不足！请查看该药品的库存。')
+        else:
+            super(MedicationAdmin, self).save_model(request, obj, form, change)
+
 
 admin.site.register(Drug,DrugAdmin)
 admin.site.register(Prescription,PrescriptionAdmin)
+# admin.site.register(Medication,MedicationAdmin)
 
 admin.site.site_header = '鲁明卫生室管理后台'
 admin.site.site_title = '鲁明卫生室门诊管理后台'

@@ -1,6 +1,8 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 import datetime
+
+
 from django.utils import timezone
 import json
 from django.utils.html import format_html
@@ -70,7 +72,7 @@ class Drug(models.Model):
 
     def __str__(self):
         if self:
-            return self.drug_name+'('+str(self.id)+')'
+            return self.drug_name+'【'+self.manufacturer+'】'+'('+str(self.id)+')'
         else:
             return 'null'
 
@@ -237,7 +239,7 @@ class Medication(models.Model):
     def __str__(self):
         if self:
             if self.medicine_drug and self.medicine_prescription:
-                return '处方'+str(self.medicine_prescription.id)+':' + self.medicine_drug.drug_name
+                return '处方药品:' + self.medicine_drug.drug_name
 
         return 'null'
 
@@ -245,7 +247,6 @@ class Medication(models.Model):
         if (self.id is None) and self.medicine_drug and self.medicine_prescription:
             self.medicine_drug.stock_num -= self.sale_amount
             # if self.medicine_drug.stock_num<0:
-            #
             self.medicine_drug.save()
         super(Medication, self).save(*args, **kwargs)
 
