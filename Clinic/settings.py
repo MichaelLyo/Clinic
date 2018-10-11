@@ -32,7 +32,10 @@ ALLOWED_HOSTS = []
 
 INSTALLED_APPS = [
     'MyClinic.apps.MyclinicConfig',
-    'django_extensions',
+    # 'django_extensions',
+    # 'xadmin',
+    # 'crispy_forms',
+    # 'reversion',
 
     'django.contrib.admin',
     'django.contrib.auth',

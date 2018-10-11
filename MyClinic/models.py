@@ -66,13 +66,16 @@ class Drug(models.Model):
         if (self.mnemonic_code == ' ' or not isValidValue(self.mnemonic_code)) and self.drug_name and isValidValue(self.drug_name):
             self.mnemonic_code = tools.get_str_first_letters(self.drug_name)
 
+        if self.stock_num<=0:
+            self.stock_num = self.purchase_quantity
+
         # if self.stock_num<0:
         #     raise ValidationError('库存不够！')
         super(Drug, self).save(*args, **kwargs)
 
     def __str__(self):
         if self:
-            return self.drug_name+'【'+self.manufacturer+'】'+'('+str(self.id)+')'
+            return (self.drug_name if self.drug_name else '未指定药品名称') +'【'+ (self.manufacturer if self.manufacturer else '未指定生产厂家') +'】'+'('+str(self.id)+')'
         else:
             return 'null'
 
@@ -174,11 +177,24 @@ class Prescription(models.Model):
     def __str__(self):
         if self:
             if isValidValue(self.patient_name):
-                return self.patient_name
+                return '患者：'+self.patient_name+'|处方编号'+str(self.id)
             else:
                 return '未指定患者姓名'
 
         return 'null'
+
+    def get_total_sale_cost(self):
+        result = 0
+        all_medication = Medication.objects.filter(medicine_prescription=self)
+        for medication in all_medication:
+            if medication.sale_mode == 0:
+                result += (medication.medicine_drug.retail_price * medication.sale_amount)
+            elif medication.sale_mode == 1:
+                result += (medication.medicine_drug.wholesale_price * medication.sale_amount)
+        result += self.treatment_cost
+        return tools.round_up(result)
+
+    get_total_sale_cost.short_description = '药方总价'
 
     def get_total_retail_cost(self):
         result = 0
@@ -216,6 +232,10 @@ class Prescription(models.Model):
                     setattr(self, attr, json_data[attr] if json_data[attr] else default_value)
         pass
 
+SALE_MODE_CHOICE = (
+    (0, '零售价'),
+    (1, '批发价'),
+)
 
 class Medication(models.Model):
 
@@ -229,6 +249,7 @@ class Medication(models.Model):
     medicine_prescription = models.ForeignKey(Prescription,on_delete=models.CASCADE,related_name='medication_prescription',verbose_name='处方')
 
     sale_amount = models.FloatField(default=0,verbose_name='售货数量',validators=[MinValueValidator(0)])
+    sale_mode = models.IntegerField(default=0,verbose_name='销售模式',choices=SALE_MODE_CHOICE)
 
     # create_date = models.DateTimeField(default=timezone.now,verbose_name='创建日期')
 
