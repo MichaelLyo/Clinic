@@ -62,7 +62,7 @@ class PrescriptionAdmin(admin.ModelAdmin):
         ('药方总费用', {'fields': ['get_total_sale_cost','get_total_retail_cost','get_total_wholesale_cost']}),
 
     ]
-    readonly_fields = ['get_id','get_total_retail_cost','get_total_wholesale_cost']
+    readonly_fields = ['get_id','get_total_sale_cost','get_total_retail_cost','get_total_wholesale_cost']
     # 侧边栏过滤框
     list_filter = ['create_date','patient_name']
 
