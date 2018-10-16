@@ -88,7 +88,6 @@ class PrescriptionAdmin(admin.ModelAdmin):
                                          + '【' + obj.medicine_drug.manufacturer + '】'
                                          + '库存不足！请查看该药品的库存。')
                     flag = False
-                print(obj.medicine_drug.drug_name)
             if flag:
                 formset.save()
             else:

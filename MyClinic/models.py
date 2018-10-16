@@ -20,6 +20,9 @@ DRUG_UNIT_CHOICE=(
     ('袋','袋'),
     ('包','包'),
     ('箱','箱'),
+    ('板','板'),
+    ('根','根'),
+    ('片','片'),
 )
 
 def isValidValue(value):
@@ -75,7 +78,9 @@ class Drug(models.Model):
 
     def __str__(self):
         if self:
-            return (self.drug_name if self.drug_name else '未指定药品名称') +'【'+ (self.manufacturer if self.manufacturer else '未指定生产厂家') +'】'+'('+str(self.id)+')'
+            return (self.drug_name if self.drug_name else '未指定药品名称') +\
+                   '【'+ (self.manufacturer if self.manufacturer else '未指定生产厂家') +'】'+\
+                   '('+str(self.id)+')'+'<库存 '+str(self.stock_num)+'>'
         else:
             return 'null'
 
@@ -151,16 +156,16 @@ def get_pic_html(img_url):
 
 
 SEX_CHOICE = (
-    ('男', '男'),
-    ('女', '女'),
-    # ('未指定', '未指定'),
+    (0, '男'),
+    (1, '女'),
+    # (2, '未指定'),
 )
 
 class Prescription(models.Model):
 
     id = models.AutoField(primary_key=True,verbose_name='处方编号')
     patient_name = models.CharField(max_length=40, verbose_name='患者姓名', default=default_value, blank=True, null=True)
-    patient_gender = models.CharField(max_length=10, verbose_name='患者性别', default=default_value, blank=True, null=True,choices=SEX_CHOICE)
+    patient_gender = models.IntegerField(verbose_name='患者性别', default=0, choices=SEX_CHOICE)
     patient_age = models.IntegerField(verbose_name='患者年龄', default=1,validators=[MinValueValidator(0)])
     illness_description = models.TextField(max_length=300, verbose_name='病症描述', default=default_value, blank=True, null=True)
 
@@ -177,11 +182,17 @@ class Prescription(models.Model):
     def __str__(self):
         if self:
             if isValidValue(self.patient_name):
-                return '患者：'+self.patient_name+'|处方编号'+str(self.id)
+                return '患者：'+self.patient_name+' | 处方编号'+str(self.id)
             else:
                 return '未指定患者姓名'
 
         return 'null'
+
+    def save(self, *args, **kwargs):
+        if not isValidValue(self.patient_name):
+            no_name_count = len(Prescription.objects.filter(patient_name__startswith='病号'))
+            self.patient_name = '病号'+str(no_name_count)
+        super(Prescription, self).save(*args, **kwargs)
 
     def get_total_sale_cost(self):
         result = 0

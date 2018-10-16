@@ -105,5 +105,5 @@ def get_str_first_letters(string):
     return ''.join(charLst)
 
 def round_up(value):
-    # 替换内置round函数,实现保留2位小数的精确四舍五入
-    return round(value * 100,2) / 100.0
+    # 替换内置round函数,实现保留1位小数的精确四舍五入
+    return round(value * 100,1) / 100.0
