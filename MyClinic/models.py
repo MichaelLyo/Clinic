@@ -45,7 +45,8 @@ class Drug(models.Model):
     purchase_quantity =models.FloatField(default=0,verbose_name='进货数量')
     purchase_date = models.DateTimeField(default=timezone.now, verbose_name='进货日期')
     serial_number = models.CharField(max_length=40, verbose_name='产品批号', default=default_value, blank=True, null=True)
-    validity_period = models.CharField(max_length=40, verbose_name='有效期', default=default_value, blank=True, null=True)
+    validity_period = models.CharField(max_length=40, verbose_name='有效时长', default=default_value, blank=True, null=True)
+    validity_date = models.DateField(verbose_name='有效期',default=timezone.now)
 
     purchase_price = models.FloatField(default=0, verbose_name='进货价',validators=[MinValueValidator(0)])
     retail_price = models.FloatField(default=0, verbose_name='零售价',validators=[MinValueValidator(0)])
@@ -69,7 +70,7 @@ class Drug(models.Model):
         if (self.mnemonic_code == ' ' or not isValidValue(self.mnemonic_code)) and self.drug_name and isValidValue(self.drug_name):
             self.mnemonic_code = tools.get_str_first_letters(self.drug_name)
 
-        if self.stock_num<=0:
+        if self.id is None and self.stock_num<=0:
             self.stock_num = self.purchase_quantity
 
         # if self.stock_num<0:
@@ -84,20 +85,24 @@ class Drug(models.Model):
         else:
             return 'null'
 
+    def retail_price_with_color(self):
+        # if self.vlog_date_published > datetime.today().date():
+        #     return format_html('<span style="color: #cc0033; font-weight: bold;">{0}</span>',
+        #                        self.vlog_date_published.strftime('%b. %d, %Y'))
+        # else:
+        return format_html('<span style="color: #FF5733 ; font-weight: bold;">{0}</span>', self.retail_price)
+
+    retail_price_with_color.allow_tags = True
+    retail_price_with_color.short_description = '零售价'
+
     def set_default_retail_price(self):
         self.retail_price = tools.round_up(1.2*self.purchase_price)
-        # return 1.2*self.purchase_price
 
     def set_default_wholesale_price(self):
         self.wholesale_price = tools.round_up(1.1*self.purchase_price)
-        # return 1.1*self.purchase_price
 
     def get_model_dict(self):
         result = dict([(attr, getattr(self, attr) if isValidValue(getattr(self, attr)) else None)  for attr in [f.name for f in self._meta.fields]])
-        # pop_list = ['borrower','referrer']
-        # for p_item in pop_list:
-        #     result.pop(p_item)
-            # result[p_item+'_id'] = getattr(self,p_item).id if getattr(self,p_item) else None
         return result
 
 

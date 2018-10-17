@@ -1,6 +1,7 @@
 import json
 import datetime
 import pytz
+from decimal import Decimal
 
 def parse_request_data(request):
     result = {}
@@ -106,4 +107,13 @@ def get_str_first_letters(string):
 
 def round_up(value):
     # 替换内置round函数,实现保留1位小数的精确四舍五入
-    return round(value * 100,1) / 100.0
+    return float(Decimal(str(value)).quantize(Decimal('0.0')))
+    # return round(value * 100,1) / 100.0
+
+def transform_date(origin):
+    if origin and len(origin) == 6:
+        return datetime.datetime(int(origin[0:4]),int(origin[4:]),1)
+    elif origin and len(origin) == 8:
+        return datetime.datetime(int(origin[0:4]), int(origin[4:6]), int(origin[6:]))
+    else:
+        return None

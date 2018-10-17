@@ -14,7 +14,8 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path,include
+from MyClinic import views as clinic_view
 
 # import xadmin
 # xadmin.autodiscover()
@@ -25,5 +26,7 @@ from django.urls import path
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    path('MyClinic/', include('MyClinic.urls')),
+    path('',clinic_view.index,name='index'),
     # path('xadmin/', xadmin.site.urls),
 ]

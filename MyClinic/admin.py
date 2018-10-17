@@ -1,8 +1,10 @@
+import datetime
+
 from django.contrib import admin
 from django.contrib import messages
 # Register your models here.
 # from django.utils.html import format_html
-
+from django.utils.translation import ugettext_lazy
 # from django_extensions.admin import ForeignKeyAutocompleteTabularInline
 from .models import Drug,Prescription,Medication
 from . import tools
@@ -138,6 +140,39 @@ class PrescriptionAdmin(admin.ModelAdmin):
 
     get_id.short_description = '处方ID'
 
+class ValidityListFilter(admin.SimpleListFilter):
+    title = ugettext_lazy('有效期')
+    parameter_name = 'validity_date'
+
+    def lookups(self, request, model_admin):
+        return (
+            ('0', ugettext_lazy('一周内')),
+            ('1', ugettext_lazy('一个月内')),
+            ('2', ugettext_lazy('半年内')),
+            ('3', ugettext_lazy('一年内')),
+            ('4', ugettext_lazy('一年以上')),
+            ('5', ugettext_lazy('已过期')),
+
+        )
+        pass
+
+    def queryset(self, request, queryset):
+        today = datetime.date.today()
+        if self.value() == '0':
+            return queryset.filter(validity_date__gte= today, validity_date__lte=today+datetime.timedelta(7))
+        if self.value() == '1':
+            return queryset.filter(validity_date__gte=today, validity_date__lte=today + datetime.timedelta(30))
+        if self.value() == '2':
+            return queryset.filter(validity_date__gte=today, validity_date__lte=today + datetime.timedelta(182))
+        if self.value() == '3':
+            return queryset.filter(validity_date__gte=today, validity_date__lte=today + datetime.timedelta(365))
+        if self.value() == '4':
+            return queryset.filter(validity_date__gt=today + datetime.timedelta(365))
+        if self.value() == '5':
+            return queryset.filter(validity_date__lt=today)
+
+        pass
+
 
 class DrugAdmin(admin.ModelAdmin):
 
@@ -160,18 +195,21 @@ class DrugAdmin(admin.ModelAdmin):
         # ('库存', {'fields': ['stock_num']}),
         ('药品基本信息',{'fields':['get_id','drug_name','mnemonic_code','manufacturer','stock_num','specification','unit']}),
         ('价格信息', {'fields': ['purchase_price', 'retail_price', 'wholesale_price']}),
-        ('进货信息', {'fields': ['serial_number','validity_period','purchase_quantity','purchase_date']}),
+        ('进货信息', {'fields': ['serial_number','validity_period','validity_date','purchase_quantity','purchase_date']}),
         ('分类', {'fields': ['property_classification', 'function_classification']}),
 
     ]
 
-    list_display = ['id','drug_name','mnemonic_code','retail_price','wholesale_price',
-                    'manufacturer','purchase_date','property_classification','function_classification','stock_num','unit']
-
+    list_display = ['id','drug_name','mnemonic_code','retail_price_with_color','wholesale_price',
+                    'manufacturer','validity_date','property_classification','function_classification','stock_num','unit','purchase_date']
+    # list_display_links = ['id','drug_name']
     readonly_fields = ['get_id']
 
     # 侧边栏过滤框
-    list_filter = ['purchase_date', 'property_classification', 'function_classification','manufacturer']
+    list_filter = ['property_classification', 'function_classification',ValidityListFilter,'purchase_date', ]
+
+    actions = ['update_drug_price','calculate_drug_price','calculate_drug_purchase_price']
+
 
     def get_id(self, obj):
         if obj.id is None:
@@ -183,6 +221,50 @@ class DrugAdmin(admin.ModelAdmin):
         else:
             return obj.id
     get_id.short_description = '药品ID'
+
+    def update_drug_price(self,request,queryset):
+        if len(queryset)>0:
+            for obj in queryset:
+                # obj = Drug.objects.filter(id=item.id)[0]
+                obj.purchase_price = tools.round_up(obj.purchase_price)
+                obj.retail_price = tools.round_up(obj.retail_price)
+                obj.wholesale_price = tools.round_up(obj.wholesale_price)
+                obj.save()
+                pass
+            self.message_user(request,'选中的'+str(len(queryset))+'个药品的价格已经更新')
+        else:
+            for obj in Drug.objects.all():
+                obj.purchase_price = tools.round_up(obj.purchase_price)
+                obj.retail_price = tools.round_up(obj.retail_price)
+                obj.wholesale_price = tools.round_up(obj.wholesale_price)
+                obj.save()
+            self.message_user(request,'所有药品的价格已经更新')
+
+    update_drug_price.short_description = '【刷新】所选药品的【价格位数】'
+
+    def calculate_drug_price(self, request, queryset):
+        total_retail = 0
+        total_wholesale = 0
+        total_purchase = 0
+        for obj in queryset:
+            total_purchase+=obj.purchase_price
+            total_retail+=obj.retail_price
+            total_wholesale+=obj.wholesale_price
+        total_retail = tools.round_up(total_retail)
+        total_wholesale = tools.round_up(total_wholesale)
+        total_purchase = tools.round_up(total_purchase)
+
+        self.message_user(request, '选中的' + str(len(queryset)) + '个药品的 总进货价为：'+str(total_purchase)+
+                          '元；总零售价为：'+str(total_retail)+'元；总批发价为：'+str(total_wholesale)+'元。')
+    calculate_drug_price.short_description = '【统计】所选药品的【总价格】'
+
+    def calculate_drug_purchase_price(self , request, queryset):
+        total_purchase = 0
+        for obj in queryset:
+            total_purchase +=(obj.purchase_price*obj.purchase_quantity)
+        total_purchase = tools.round_up(total_purchase)
+        self.message_user(request, '选中的' + str(len(queryset)) + '个药品的 总进货开销为：' + str(total_purchase) +'元。')
+    calculate_drug_purchase_price.short_description = '【统计】所选药品的【进货开支】'
 
 
 class MedicationAdmin(admin.ModelAdmin):
